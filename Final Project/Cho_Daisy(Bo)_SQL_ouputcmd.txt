@@ -1,0 +1,31 @@
+Microsoft Windows [Version 10.0.17763.914]
+(c) 2018 Microsoft Corporation. All rights reserved.
+
+C:\Users\17143>sqlplus
+
+SQL*Plus: Release 18.0.0.0.0 - Production on Sat Dec 14 17:01:05 2019
+Version 18.4.0.0.0
+
+Copyright (c) 1982, 2018, Oracle.  All rights reserved.
+
+Enter user-name: system
+Enter password:
+Last Successful login time: Fri Oct 25 2019 14:18:08 -05:00
+
+Connected to:
+Oracle Database 18c Express Edition Release 18.0.0.0.0 - Production
+Version 18.4.0.0.0
+
+SQL> ALTER SESSION SET "_ORACLE_SCRIPT"=true;
+
+Session altered.
+
+SQL> /*Step 1*/
+
+SQL> CREATE USER Cho_Daisy_STSCI5060FP IDENTIFIED BY "62368102Dc";
+
+User created.
+
+SQL> GRANT ALL PRIVILEGES TO Cho_Daisy_STSCI5060FP;
+
+Grant succeeded.

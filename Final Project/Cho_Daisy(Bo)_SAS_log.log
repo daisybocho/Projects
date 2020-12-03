@@ -1,0 +1,151 @@
+488  /* Fall 2019 STSCI 5060 Final Project */
+489  /* Name: Daisy (Bo) Cho*/
+490  /*NetID: bsc223*/
+491
+492  options pagesize=1000 linesize=5000
+                           --------
+                           18
+ERROR 18-12: Option value for SAS option LINESIZE must be between 64 and 256.
+493
+494  title '******** Step 4 ********';
+     -----
+     13
+ERROR 13-12: Unrecognized SAS option name TITLE.
+
+494! title '******** Step 4 ********';
+           --------------------------
+           13
+ERROR 13-12: Unrecognized SAS option name '******** STEP 4 ********'.
+495  LIBNAME myoracle ORACLE USER=Cho_Daisy_STSCI5060FP PW = XXXXXXXXXXXX;
+NOTE: Libref MYORACLE was successfully assigned as follows:
+      Engine:        ORACLE
+      Physical Name:
+496  PROC SQL;
+497  create table myoracle.School_Finance_2010_t as
+498  select * from Final.School_Finance_2010;
+ERROR: The ORACLE table SCHOOL_FINANCE_2010_T has been opened for OUTPUT. This table already
+       exists, or there is a name conflict with an existing object. This table will not be
+       replaced. This engine does not support the REPLACE option.
+
+499  quit;
+NOTE: The SAS System stopped processing this step because of errors.
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+
+500
+501  title '******** Step 12B ********';
+502  LIBNAME myoracle ORACLE USER=Cho_Daisy_STSCI5060FP PW = XXXXXXXXXXXX;
+NOTE: Libref MYORACLE was successfully assigned as follows:
+      Engine:        ORACLE
+      Physical Name:
+503
+
+
+504  data myoracle.mfslr_t;
+505   merge myoracle.mfr_v myoracle.msr_v myoracle.mlr_v;
+506   run;
+
+NOTE: Due to the PRESERVE_TAB_NAMES=NO libname option setting, 1 table(s) have not been
+      displayed/returned.
+ERROR: The ORACLE table MFSLR_T has been opened for OUTPUT. This table already exists, or there
+       is a name conflict with an existing object. This table will not be replaced. This engine
+       does not support the REPLACE option.
+NOTE: The SAS System stopped processing this step because of errors.
+NOTE: There were 1 observations read from the data set MYORACLE.MFR_V.
+NOTE: There were 1 observations read from the data set MYORACLE.MSR_V.
+NOTE: There were 1 observations read from the data set MYORACLE.MLR_V.
+NOTE: DATA statement used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.03 seconds
+
+
+507
+508  title '******** Step 20 ********';
+509  proc SQL;
+510  create table myoracle.Total_Rev as
+511  select * from myoracle.total_rev_v;
+ERROR: The ORACLE table TOTAL_REV has been opened for OUTPUT. This table already exists, or there
+       is a name conflict with an existing object. This table will not be replaced. This engine
+       does not support the REPLACE option.
+
+512  quit;
+NOTE: The SAS System stopped processing this step because of errors.
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+513
+514  title '******** Step 21 ********';
+
+
+515  proc corr data= myoracle.Total_Rev
+516  plots(maxpoints=NONE)=matrix(histogram);
+517  var tfedrev tstrev tlocrev;
+518  run;
+
+NOTE: Writing HTML Body file: sashtml3.htm
+NOTE: PROCEDURE CORR used (Total process time):
+      real time           0.64 seconds
+      cpu time            0.18 seconds
+
+
+519
+520  title '******** Step 22 ********';
+521  proc reg data= myoracle.Total_Rev;
+522  model tfedrev = tstrev tlocrev;
+523  run;
+
+WARNING: Most ODS graphics with more than 5000 points have been suppressed. Use the
+         PLOTS(MAXPOINTS= ) option in the PROC REG statement to change or override the cutoff.
+NOTE: Heat maps are displayed instead of scatter plots when residual plots or fit plots are
+      produced.
+524
+525  title '******** Step 23 ********';
+
+NOTE: PROCEDURE REG used (Total process time):
+      real time           0.37 seconds
+      cpu time            0.17 seconds
+
+
+526  proc corr data= myoracle.Total_Rev_v
+527  plots(maxpoints=NONE)=matrix(histogram);
+528  var tfedrev tstrev tlocrev;
+529  run;
+
+NOTE: PROCEDURE CORR used (Total process time):
+      real time           0.40 seconds
+      cpu time            0.09 seconds
+
+
+530
+531  proc reg data= myoracle.Total_Rev_v;
+532  model tfedrev = tstrev tlocrev;
+533  run;
+
+WARNING: Most ODS graphics with more than 5000 points have been suppressed. Use the
+         PLOTS(MAXPOINTS= ) option in the PROC REG statement to change or override the cutoff.
+NOTE: Heat maps are displayed instead of scatter plots when residual plots or fit plots are
+      produced.
+534
+535  title '******** Step 24 ********';
+
+NOTE: PROCEDURE REG used (Total process time):
+      real time           0.37 seconds
+      cpu time            0.18 seconds
+
+
+536  PROC SQL;
+537  create table myoracle.School_Finance_2015_t as
+538  select * from Final.School_Finance_2015;
+ERROR: The ORACLE table SCHOOL_FINANCE_2015_T has been opened for OUTPUT. This table already
+       exists, or there is a name conflict with an existing object. This table will not be
+       replaced. This engine does not support the REPLACE option.
+
+539  quit;
+NOTE: The SAS System stopped processing this step because of errors.
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
