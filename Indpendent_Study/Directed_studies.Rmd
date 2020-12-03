@@ -1,0 +1,241 @@
+---
+title: "Independent study"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+
+```{r}
+data <- read.csv('C:/Users/17143/Desktop/Indpendent_Study/DIADEMwithProteomics_remission.csv', header = TRUE)
+```
+
+## Data cleaning
+
+```{r}
+library(dplyr)
+data <- data %>% mutate(ExSmoker = ifelse(ExSmoker == "No",0,1))
+nums <- unlist(lapply(data, is.numeric)) 
+data <- data[ , nums]
+c <- c(2:11645)
+data <- data[,c]
+data[is.na(data)] <- 0
+data <- data %>% select(-6786,-1282,-11614,-1246,-6785,-6781)
+data <- data[,!grepl("hba1c",colnames(data))]
+data <- data[,!grepl("HbA1c",colnames(data))]
+data <- data[,!grepl("HOMA",colnames(data))]
+data <- data[,!grepl("homa",colnames(data))]
+data <- data[,!grepl("remission_",colnames(data))]
+data <- data[,!grepl("compremission",colnames(data))]
+```
+```{r, include=FALSE}
+which(colnames(data)=="remission_12")
+which(colnames(data)=="HOMA2B_12")
+which(colnames(data)=="lHOMA2B_12")
+which(colnames(data)=="HbA1c_LAST_CERNER")
+which(colnames(data)=="FBG12remission")
+which(colnames(data)=="remission_3")
+#which(colnames(data)=="remission_6")
+#which(colnames(data)=="remission_9")
+
+```
+
+```{r, include=FALSE, eval=FALSE}
+#Tried to convert all categorical data, but wasn't able to pinpoint each one individually so I decided to only evaluate qualitative for now without age
+c <- c(5, 8:11984)
+data <- data[,c]
+data <- data %>% mutate(ExSmoker = ifelse(ExSmoker == "No",0,1))
+data <- data %>% mutate(Gender = ifelse(Gender == "Female",1,2))
+```
+
+
+## Train and Test data
+```{r}
+smp_size <- 0.8*nrow(data) 
+train_ind <- sample(seq_len(nrow(data)),size=smp_size)
+data_train <- (data[train_ind,])
+data_test <- (data[-train_ind,])
+```
+
+
+## Lasso version of Logistic Regression
+```{r}
+library(glmnet)
+X_train=model.matrix(remission~.,data_train)[,-1]
+Y_train=data_train$remission
+X_te=model.matrix(remission~.,data_test)[,-1]
+Y_te=data_test$remission
+```
+```{r, include=FALSE, eval=FALSE}
+grid=10^seq(10,-2,length=100)
+lasso.5.train<- rep(0,50)
+lasso.5.test<- rep(0,50)
+
+for(i in  1:50){
+set.seed(i)
+cv.lasso = cv.glmnet(X_train, Y_train, alpha =1, lambda = grid)
+best.lasso = cv.lasso$lambda.min
+pred.lasso.train = predict(cv.lasso, s = best.lasso, newx = X_train)
+lasso_error.train = mean((pred.lasso.train - Y_train)^2)
+lasso_error.train
+lasso.5.train[i]<- lasso_error.train
+pred.lasso.test = predict(cv.lasso, s = best.lasso, newx = X_te)
+lasso_error.test = mean((pred.lasso.test - Y_te)^2)
+lasso_error.test
+lasso.5.test[i]<- lasso_error.test
+}
+lasso.5.train
+mean(lasso.5.train) #average error value for training data
+
+lasso.5.test
+mean(lasso.5.test) #average error value for testing data from the model using training data
+```
+
+Different way to run lasso but doesn't seem to run accurately both error is 0
+```{r}
+set.seed(123) 
+cv.lasso <- cv.glmnet(X_train, Y_train, alpha = 1, family = "binomial")
+plot(cv.lasso)
+cv.lasso$lambda.min
+cv.lasso$lambda.1se
+#coef(cv.lasso, cv.lasso$lambda.min)
+```
+```{r}
+#Using lambda.min
+model <- glmnet(X_train, Y_train, alpha = 1, family = "binomial",lambda = cv.lasso$lambda.min)
+# regression coefficients
+coeffs<-coef(model)
+coeffs<-as.data.frame(as.matrix(coeffs))
+coeford<-coeffs[order(-coeffs$s0), , drop = FALSE]
+row_sub = apply(coeford, 1, function(row) all(row !=0 ))
+coef0<-coeford[row_sub,, drop = FALSE]
+View(coef0)
+data.frame(coef0)
+probabilities <- model %>% predict(newx = X_te)
+predicted.classes <- ifelse(probabilities > 0.5, "pos", "neg")
+# Model accuracy
+observed.classes <- data_test$remission
+mean(predicted.classes == observed.classes)
+```
+```{r}
+#Using lambda.1se
+model1 <- glmnet(X_train, Y_train, alpha = 1, family = "binomial",lambda = cv.lasso$lambda.1se)
+# regression coefficients
+coeffs1<-coef(model1)
+coeffs1<-as.data.frame(as.matrix(coeffs1))
+coeford1<-coeffs1[order(-coeffs1$s0), , drop = FALSE]
+row_sub = apply(coeford1, 1, function(row) all(row !=0 ))
+coef1<-coeford1[row_sub,, drop = FALSE]
+View(coef1)
+data.frame(coef1)
+probabilities <- model1 %>% predict(newx = X_te)
+predicted.classes <- ifelse(probabilities > 0.5, "pos", "neg")
+observed.classes <- data_test$remission
+mean(predicted.classes == observed.classes)
+```
+
+## Random forest
+```{r}
+library(randomForest)
+data$remission <- as.character(data$remission)
+data$remission <- as.factor(data$remission)
+fit <- randomForest(remission~., data)
+print(fit)
+imp<-importance(fit)
+rfimp<-data.frame(imp)
+rfimp<- rfimp[order(-rfimp$MeanDecreaseGini), , drop = FALSE]
+row_sub = apply(rfimp, 1, function(row) all(row !=0 ))
+rfimp<-rfimp[row_sub,, drop = FALSE]
+View(rfimp)
+data.frame(rfimp)
+```
+
+## CART
+### Classification
+```{r}
+library(rpart)
+library(rpart.plot)
+
+fit1 <- rpart(remission~., method="class", data=data)
+
+printcp(fit1) 
+plotcp(fit1) 
+summary(fit1)
+
+{plot(fit1, uniform=TRUE, main="Classification Tree")
+text(fit1, use.n=TRUE, xpd=TRUE, cex=.8)}
+
+pfit<- prune(fit1, cp= fit1$cptable[which.min(fit1$cptable[,"xerror"]),"CP"])
+
+# plot the pruned tree
+{plot(pfit, uniform=TRUE, main="Pruned Classification Tree")
+text(pfit, use.n=TRUE, xpd=TRUE, cex=.8)}
+```
+
+### Regression
+```{r}
+fit <- rpart(remission~., method="anova", data=data)
+
+printcp(fit) 
+plotcp(fit)
+summary(fit)
+
+par(mfrow=c(1,2))
+rsq.rpart(fit)
+
+{plot(fit, uniform=TRUE, main="Regression Tree")
+text(fit, use.n=TRUE, xpd=TRUE, cex=.8)}
+
+pfit<- prune(fit, cp= fit1$cptable[which.min(fit1$cptable[,"xerror"]),"CP"])
+
+# plot the pruned tree
+{plot(pfit, uniform=TRUE, main="Pruned Regression Tree")
+text(pfit, use.n=TRUE, xpd=TRUE, cex=.8)}
+```
+
+```{r, include=FALSE, eval=FALSE}
+#Causes an error
+library(rpart)
+library(rpart.plot)
+set.seed(123)
+tree <- rpart(remission~., method="anova", data=data_train)
+printcp(tree)
+bestcp <- tree$cptable[which.min(tree$cptable[,"xerror"]),"CP"]
+tree.pruned <- prune(tree, cp = bestcp)
+conf.matrix <- table(data_test$remission, predict(tree.pruned,type="class"))
+rownames(conf.matrix) <- paste("Actual", rownames(conf.matrix), sep = ":")
+colnames(conf.matrix) <- paste("Pred", colnames(conf.matrix), sep = ":")
+print(conf.matrix)
+plot(tree.pruned)
+text(tree.pruned, cex = 0.8, use.n = TRUE, xpd = TRUE)
+prp(tree.pruned, faclen = 0, cex = 0.8, extra = 1)
+
+```
+
+## SVM
+```{r, include=FALSE, eval=FALSE}
+library(e1071)
+dat = data.frame(data, y = as.factor(data$remission))
+svmfit = svm(y~., data = dat, kernel ="linear", cost = 30, scale = FALSE)
+#WARNING: reaching max number of iterations
+plot(svmfit, dat)
+```
+```{r, include=FALSE, eval=FALSE}
+data_train = scale(data_train) 
+data_test = scale(data_test) 
+fit <- svm(remission ~ ., data = data_train, type = 'C-classification', kernel = 'linear') 
+y_pred = predict(fit, newdata = data_test)
+```
+
+## Multiple Linear Regression
+```{r}
+fit<- lm(remission~., data=data)
+summ<-summary(fit)
+#summ
+coeffs<-coefficients(fit)
+coeffsord <- coeffs[order(-coeffs)]
+#coeffsord
+coeffsord<-na.omit(coeffsord)
+data.frame(coeffsord)
+```
+
